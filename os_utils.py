@@ -4,8 +4,15 @@
 OS related functions.
 """
 
-import os
+
+from os import getenv as env
+
+from os.path import isfile as file_exists, \
+                    join as make_path, \
+                    realpath
+
 import subprocess
+from typing import Tuple
 
 from lang import *
 from log import *
@@ -18,7 +25,7 @@ class ProcessResult:
     def __init__(self, exit_code: int, output: str) -> None:
         self.__exit_code = exit_code
         self.__output = output
-        self.__output_lines = output.split ("\n")
+        self.__output_lines = tuple (output.split ("\n"))
 
     def exit_code (self) -> int:
         return self.__exit_code
@@ -38,7 +45,7 @@ class ProcessResult:
     def output (self) -> str:
         return self.__output
     
-    def output_lines (self) -> Tuple:
+    def output_lines (self) -> Tuple[str, ...]:
         return self.__output_lines
     
 
@@ -47,7 +54,7 @@ def env (var_name: str) -> str:
     Returns the value of the specified environment variable,
     or an empty string if does not exists.
     """
-    env_var = os.getenv (var_name)
+    env_var = getenv (var_name)
 
     if env_var == None:
         return ""
@@ -74,12 +81,12 @@ def in_path (executable: str) -> bool:
         paths = path_var.split (":")
 
     for path in paths:
-        if os.path.isfile (os.path.join (path, executable)):
+        if file_exists (make_path (path, executable)):
             return True
         else:
             if in_windows() and (not executable_extension.startswith (".")):
                 for ext in windows_exec_extensions:
-                    if os.path.isfile (os.path.join (path, (executable + ext))):
+                    if file_exists (make_path (path, (executable + ext))):
                         return True
 
     return False
@@ -140,9 +147,9 @@ def path_of (program: str) -> str:
     exec_path = ""
 
     for p in _paths:
-        exec_path = os.path.join (p, program)
+        exec_path = make_path (p, program)
 
-        if os.path.isfile (exec_path):
+        if file_exists (exec_path):
             break
 
     return exec_path
@@ -200,7 +207,7 @@ def run_from_quietly (cmdline, working_dir: str) -> ProcessResult:
 
     The command line can be specified as an array or as a string.
     """
-    return run_program (working_dir, True)
+    return run_program (cmdline, working_dir, True)
 
 
 def run_program (cmdline, working_dir: str = ".", get_output: bool = False) -> ProcessResult:
@@ -223,10 +230,10 @@ def run_program (cmdline, working_dir: str = ".", get_output: bool = False) -> P
     command = cmdline.split()[0]
     
     # If the executable is in the current directory...
-    if os.path.isfile (os.path.join (".", command)):
+    if file_exists (make_path (".", command)):
 
         # Let's update the command with it's full path
-        command = os.path.realpath (command)
+        command = realpath (command)
 
     # If is being invoked as a command...    
     elif (not ("/") in command) and (not ("\\") in command):
@@ -246,7 +253,7 @@ def run_program (cmdline, working_dir: str = ".", get_output: bool = False) -> P
         process = subprocess.run (cmdline, shell=True, stdout=subprocess.PIPE, 
                                   stderr=subprocess.STDOUT, cwd=working_dir, text=True)
     else:
-        process = subprocess.run (cmdline, shell=True, cwd=working_dir)
+        process = subprocess.run (cmdline, shell=True, cwd=working_dir, text=True)
     
     if not get_output:
         return ProcessResult (process.returncode, "")
@@ -278,7 +285,7 @@ def temp_path () -> str:
     if in_windows ():
         return env ("TEMP")
     else:
-        return os.path.join (user_home(), "_tmp")
+        return make_path (user_home(), "_tmp")
 
 
 def user_home () -> str:

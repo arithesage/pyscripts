@@ -3,9 +3,9 @@
 from datetime import datetime
 import hashlib
 import io
+import os
 import shutil
 from typing import Tuple
-import os
 
 from os_utils import in_windows, si_path, ramdisk_path
 from stdio import print_va
@@ -36,7 +36,7 @@ def append_to_file (file_path: str, data: str, append_newline:bool = True) -> bo
     file = io.open (file_path, "a")
 
     if (file == None):
-        print_va (Messages.CannotOpenForWriting, file_path)
+        print_va (Messages.CannotOpenFileForWriting, file_path)
         print ()
         return False
 
@@ -60,7 +60,7 @@ def base_name (path: str) -> str:
     return path_basename
 
 
-def break_path (path: str) -> Tuple[str]:
+def break_path (path: str) -> Tuple[str, ...]:
     path_chunks = []
 
     if not str_empty (path):        
@@ -71,7 +71,7 @@ def break_path (path: str) -> Tuple[str]:
             path = path.strip ("/")
             path_chunks = path.split ("/")
 
-    return path_chunks
+    return tuple (path_chunks)
 
 
 def chdir (path: str) -> bool:
@@ -139,6 +139,8 @@ def dir_exists (path: str) -> bool:
 
     if (path != None) and (path != ""):
         return os.path.isdir (os.path.realpath (path))
+    
+    return False
 
 
 def dir_name (path: str) -> str:
@@ -167,6 +169,8 @@ def file_exists (path: str) -> bool:
 
     if (path != None) and (path != ""):
         return os.path.isfile (os.path.realpath (path))
+    
+    return False
 
 
 def full_path (path: str) -> str:
@@ -179,7 +183,7 @@ def full_path (path: str) -> str:
     return real_path
 
 
-def list_dir (path: str = ".") -> Tuple[str]:
+def list_dir (path: str = ".") -> Tuple[str, ...]:
     """
     Returns the contents of the given path or an empty tuple
     if path does not exists.
@@ -194,7 +198,7 @@ def list_dir (path: str = ".") -> Tuple[str]:
         print_va ("ERROR: Path '$[0]' does not exists.", path)
         return empty_dir
     
-    return os.listdir (path)
+    return tuple (os.listdir (path))
 
 
 def makedir (path: str) -> bool:
@@ -235,7 +239,7 @@ def make_tempdir () -> str:
     return tempdir_path
 
 
-def make_path (*path_chunks: Tuple[str]) -> str:
+def make_path (*path_chunks: str) -> str:
     path = ""
 
     if (path_chunks != None) and (len (path_chunks) > 0):
