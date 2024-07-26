@@ -5,7 +5,7 @@ OS related functions.
 """
 
 
-from os import getenv as env
+from os import getenv
 
 from os.path import isfile as file_exists, \
                     join as make_path, \

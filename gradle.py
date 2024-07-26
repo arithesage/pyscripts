@@ -1,13 +1,22 @@
 #!/usr/bin/env python
 
-from filesystem import append_to_file, copy, cwd, makedir, make_tempdir, make_path, dir_exists, file_exists
-from lang import type_of
-from os_utils import path_of, ProcessResult, run_from, run_from_quietly, si_path
-from stdio import print_va
-from str_utils import str_empty
+# from filesystem import append_to_file, copy, cwd, makedir, make_tempdir, make_path, dir_exists, file_exists
+# from lang import type_of
+# from os_utils import path_of, ProcessResult, run_from, run_from_quietly, si_path
+# from stdio import print_va
+# from str_utils import str_empty
+
+from scripting_commons import ExecResult
+
+from scripting_commons import append_to_file, copy, cwd, dir_exists,\
+                              dir_exists, file_exists, makedir, make_path,\
+                              make_tempdir, path_of, print_va, shellexec,\
+                              si_path, str_empty, type_of
+
+
     
 
-def __run_gradle (params, quiet = False, cwd:str = ".") -> ProcessResult:
+def __run_gradle (params, quiet = False, cwd:str = ".") -> ExecResult:
     cmdline = []
     cmdline.append (gradle_path)
 
@@ -18,9 +27,9 @@ def __run_gradle (params, quiet = False, cwd:str = ".") -> ProcessResult:
         cmdline.append (p)
 
     if quiet:
-        gradle_result = run_from_quietly (cmdline, cwd)
+        gradle_result = shellexec (cmdline, cwd)
     else:
-        gradle_result = run_from (cmdline, cwd)
+        gradle_result = shellexec (cmdline, cwd, capture_output=False)
 
     return gradle_result
 

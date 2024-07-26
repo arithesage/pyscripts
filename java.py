@@ -1,18 +1,21 @@
 #!/usr/bin/env python
 
-from lang import argv
-from lang import executing
-from lang import type_of
+# from lang import argv
+# from lang import executing
+# from lang import type_of
 
-from os_utils import ProcessResult
-from os_utils import run_program
+# from os_utils import ProcessResult
+# from os_utils import run_program
 
-from stdio import print_va
+# from stdio import print_va
+
+from scripting_commons import ExecResult
+
+from scripting_commons import executing, print_va, shellexec, type_of
 
 
 
-
-def java (args) -> ProcessResult:
+def java (args) -> ExecResult:
     java_cmdline = []
     java_cmdline.append ("java")
 
@@ -22,7 +25,7 @@ def java (args) -> ProcessResult:
     for arg in args:
         java_cmdline.append (arg)
 
-    process_result = run_program (java_cmdline, ".", True)
+    process_result = shellexec (java_cmdline)
     return process_result
 
 
@@ -31,8 +34,8 @@ def java_version ():
     
     process_result = java ("--version")
 
-    if process_result.ok ():
-        version = process_result.output().split("\n")[0]
+    if (process_result.returncode == 0):
+        version = process_result.stdout.split("\n")[0]
 
     return version
 
