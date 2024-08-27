@@ -17,6 +17,12 @@ you do scripting.
 import datetime
 import hashlib
 import io
+import json
+import platform
+import shutil
+import sys
+import zipfile
+
 from os import chdir
 from os import getenv
 from os import getcwd as cwd
@@ -24,21 +30,41 @@ from os import listdir
 from os import makedirs
 from os import remove
 from os import removedirs
+
 from os.path import isdir as dir_exists
 from os.path import dirname as dir_name
 from os.path import isfile as file_exists
 from os.path import realpath as full_path
 from os.path import join as make_path
 from os.path import basename, realpath
+
 from pathlib import Path
-import shutil
-from subprocess import CompletedProcess as ExecResult
+
+from subprocess import CompletedProcess, PIPE, STDOUT
 from subprocess import run
-import sys
+
+from typing import Dict
 from typing import Tuple
 
+from zipfile import ZipFile
+
+import wget
 
 
+
+
+class ExecResult:
+    ok = False
+    return_code = -1
+    stdout = ""
+    stderr = ""
+
+    def __init__(self, completed_process: CompletedProcess) -> None:
+        ExecResult.stderr = completed_process.stderr
+        ExecResult.stdout = completed_process.stdout
+        ExecResult.return_code = completed_process.returncode
+        ExecResult.ok = (completed_process.returncode == 0)
+        
 
 class Messages:
     """
@@ -159,6 +185,35 @@ class ANSIStyle:
         return formatted_text
 
 
+
+class CHARS:
+    """
+    Unicode characters hex codes. I don't plan to put the whole table here,
+    only those characters that i use commonly.
+    """
+    DOTS_LOW = 0x2591
+    DOTS_MEDIUM = 0x2592
+    DOTS_HIGH = 0x2593
+    BLACK = 0x2590
+    FRAME_H_LINE = 0x2550
+    FRAME_BOTTOM_LEFT = 0x255A
+    FRAME_BOTTOM_RIGHT = 0x255D
+    FRAME_T = 0x2566
+    FRAME_T_90 = 0x2563
+    FRAME_T_180 = 0x2569
+    FRAME_T_270 = 0x2560
+    FRAME_TOP_LEFT = 0x2554
+    FRAME_TOP_RIGHT = 0x2557
+    FRAME_V_LINE = 0x2551
+    SPACE = 0x0020
+
+    def __init__(self) -> None:
+        pass
+
+
+
+
+last_exec_exit_code = -1
 
 
 def ansi_style (text, fgcolor=ANSIStyle.FGCOLOR.WHITE, 
@@ -307,6 +362,14 @@ def cd (path: str) -> bool:
     return True
 
 
+def cls () -> None:
+    """
+    Clears the terminal
+    """
+    print (f"\033[2J")
+    print (f"\033[H")
+
+
 def concat (*items, sep: str = "") -> str:
     """
     A simply way to concatenate múltiple items in one string.
@@ -366,6 +429,91 @@ def delete (path: str, recursive:bool = False) -> bool:
             return False
 
         return True
+    
+
+def download (url: str, destination: str = ".") -> bool:
+    """
+    Downloads a file using the wget module.
+    Destination, is given, is the destination dir, without filename.
+    """
+    
+    if (destination == "."):
+        destination = cwd ()
+    
+    file_name = basename (url)
+    destination = make_path (destination, file_name)
+
+    print_va ("Downloading '$[0]'...", file_name)
+    
+    try:
+        wget.download (url, destination)
+        return True
+    except:
+        return False
+    
+
+def draw (char_code: int, new_line: bool = False) -> str:
+    """
+    'Draws' characters in the terminal. This is mainly intended for writing
+    characters like those to draw boxes and another symbols with their
+    unicode character code.
+    """
+    if not new_line:
+        print (chr (char_code), end="")
+    else:
+        print (chr (char_code))
+
+
+def draw_framed_text (text: str, margin: int = 1) -> str:
+    text_lines = text.split ("\n")
+    
+    text_w = 0
+    text_h = len (text_lines)
+    frame = 1
+
+    for line in text_lines:
+        line_w = len (line)
+
+        if (line_w > text_w):
+            text_w = line_w
+
+    columns = (text_w + frame)
+    lines = (text_h + frame)
+
+    last_column = (columns - 1)
+    last_line = (lines - 1)
+
+    for l in range (0, lines):
+        for c in range (0, columns):
+            if (l == 0):
+                if (c == 0):
+                    draw (CHARS.FRAME_TOP_LEFT)
+                elif (c == last_column):
+                    draw (CHARS.FRAME_TOP_RIGHT, True)
+                else:
+                    draw (CHARS.FRAME_H_LINE)
+
+            elif (l == last_line):
+                if (c == 0):
+                    draw (CHARS.FRAME_BOTTOM_LEFT)
+                elif (c == last_column):
+                    draw (CHARS.FRAME_BOTTOM_RIGHT, True)
+                else:
+                    draw (CHARS.FRAME_H_LINE)
+
+            else:
+                if (c == 0):
+                    draw (CHARS.FRAME_V_LINE)
+                elif (c == last_column):
+                    draw (CHARS.FRAME_V_LINE, True)
+                else:
+                    print (text_lines[l - 1][c])
+    #                draw (CHARS.SPACE)
+
+
+
+def draw_message (text: str) -> None:
+    pass
 
 
 def env (var_name: str) -> str:
@@ -401,16 +549,25 @@ def exec (cmdline, run_from: str = None, capture_output: bool = False,
         cmdline = cmdline.split (" ")
 
     if use_shell:
-        return shellexec (cmdline, run_from, capture_output)
+        if (type_of (cmdline, tuple)):
+            cmdline_str = ""
+
+            for chunk in cmdline:
+                cmdline_str += chunk
+                cmdline_str += " "
+
+            cmdline = cmdline_str.strip()
+
+            return shellexec (cmdline, run_from, capture_output)
     else:
         if capture_output:
             exec_result = run (cmdline, cwd=run_from,
-                               capture_output=capture_output, 
-                               text=True, shell=False)
+                               stdout=PIPE, stderr=STDOUT,
+                               text=True)
         else:
-            exec_result = run (cmdline, cwd=run_from, shell=False)
+            exec_result = run (cmdline, cwd=run_from)
 
-        return exec_result
+        return ExecResult (exec_result)
     
 
 def file_contains (file_path: str, data: str) -> bool:
@@ -429,17 +586,66 @@ def file_contains (file_path: str, data: str) -> bool:
     return (data in file_contents)
 
 
-def in_args (arg: str) -> bool:
-    global argv
+def file_ext (file_path: str) -> str:
+    """
+    Returns the extension of the given file path (example: .txt).
+    If not exists or do not have extension, returns an empty string.
+    """
+    extension = ""
 
-    for _arg in argv:
-        if arg in _arg:
+    if file_exists (file_path):
+        filename = basename (file_path)
+
+        if (".") in filename:
+            extension = Path (file_path).suffix
+
+    return extension
+
+
+def file_is_32bit_exec (file_path: str) -> bool:
+    if file_exists (file_path):
+        exec_result = exec (["file", file_path], capture_output=True)
+    
+        if ("Intel 80386") in exec_result.stdout:
             return True
         
     return False
 
 
-def includes_path (filename: str) -> bool:
+def file_is_64bit_exec (file_path: str) -> bool:
+    if file_exists (file_path):
+        exec_result = exec (["file", file_path], capture_output=True)
+    
+        if ("x86-64") in exec_result.stdout:
+            return True
+        
+    return False
+
+
+def from_json (source: str) -> Dict:
+    """
+    Reads a JSON file (or a JSON string) and returns
+    a dictionary with the loaded data
+    """
+
+    if source.startswith ("{"):
+        obj = json.loads (source)
+        
+        if (obj != None):
+            return obj
+        
+    elif file_exists (source):
+        file_data = read_file (source)
+
+        if not str_empty (file_data):
+            obj = json.loads (file_data)
+
+            if (obj != None):
+                return obj
+    return None
+
+
+def has_path (filename: str) -> bool:
     """
     Check if the given filename has a path before it.
     """
@@ -493,16 +699,31 @@ def in_path (executable: str) -> bool:
     return False
 
 
+def in_linux () -> bool:
+    """
+    Returns True if we are in Linux (any version)
+    """
+    return (platform.system().lower() == "linux")
+
+
+def in_macos () -> bool:
+    """
+    Returns True if we are in MacOS (any version)
+    """
+    return (platform.system().lower() == "darwin")
+
+
 def in_windows () -> bool:
     """
     Returns True if we are in Windows (any version)
     """
-    windir = env ("WINDIR")
+    return (platform.system().lower() == "windows")
+    # windir = env ("WINDIR")
 
-    if str_empty (windir):
-        return False
+    # if str_empty (windir):
+    #     return False
 
-    return True
+    # return True
 
 
 def is_windows_exec (executable :str) -> bool:
@@ -518,6 +739,11 @@ def is_windows_exec (executable :str) -> bool:
         return True
 
     return False
+
+
+def last_exit_code () -> int:
+    global last_exec_exit_code
+    return last_exec_exit_code
 
 
 def list_dir (path: str = ".") -> Tuple[str, ...]:
@@ -597,6 +823,14 @@ def no_args () -> bool:
     Shortcut for checking if no arguments where passed from command line
     """
     return (len (sys.argv[1:]) == 0)
+
+
+def os_arch () -> str:
+    return platform.machine()
+
+
+def os_name () -> str:
+    return platform.system().lower()
 
 
 def parent_dir (path: str) -> str:
@@ -773,17 +1007,43 @@ def replace_all_in (old_text: str, new_text: str, file_path: str) -> bool:
 def shellexec (cmdline, 
                run_from: str = None, 
                capture_output: bool = True) -> ExecResult:
+    """
+    As exec, executes a command line, but this time it uses the shell
+    for doing it. And because this, the command line must be provided
+    as a string.
+
+    If an array is provided, it will be converted to an string.
+    """
+
+    if not type_of (cmdline, str):
+        cmdline = array_to_str (cmdline)
     
     if capture_output:
         exec_result = run (cmdline, 
                            shell=True, 
                            cwd=run_from, 
-                           capture_output=capture_output, 
+                           stdout=PIPE,
+                           stderr=STDOUT,
                            text=True)
     else:
         exec_result = run (cmdline, shell=True, cwd=run_from)
 
-    return exec_result
+    return ExecResult (exec_result)
+
+
+def shellexec_int (cmdline, run_from: str = None) -> None:    
+    """    
+    Is the same as calling shellexec without capturing output and
+    ignoring the returning object. More like the system() C function.
+
+    As nothing is returned, the cmdline exit code is accessed with
+    last_exit_code function.
+    """
+
+    global last_exec_exit_code
+
+    result = shellexec (cmdline, run_from, False)
+    last_exec_exit_code = result.return_code
     
 
 def si_path (path: str) -> str:
@@ -809,15 +1069,6 @@ def str_empty (string: str) -> bool:
     return (string == None) or (string == "")
 
 
-def str_to_array (string: str, sep: str = " ") -> list:
-    array = []
-
-    if (string != None) and (string != ""):
-        array = string.split (sep)
-    
-    return array
-
-
 def temp_path () -> str:
     """
     Returns the user temp dir path in this OS
@@ -829,6 +1080,9 @@ def temp_path () -> str:
     
 
 def test_ip (ip_address: str) -> bool:
+    """
+    Calls ping command line program to test if a IP address is reachable
+    """
     if str_empty (ip_address):
         print ("ERROR: IP address cannot be empty.")
         print ()
@@ -867,7 +1121,21 @@ def test_rw (path: str) -> bool:
     else:
         delete (file_path)
         return True
+
+
+def to_json (obj: any) -> str:
+    """
+    Serializes an object to a JSON string
+    """
     
+    if (obj != None):
+        json_data = json.dumps (obj)
+
+        if (json_data != None) and not str_empty (json_data):
+            return json_data
+    
+    return None
+
 
 def type_of (variable: str, variable_type) -> bool:
     """
@@ -887,7 +1155,16 @@ def user_home () -> str:
         return env ("HOME")
     
 
-def write_file (file_path: str, data: str) -> bool:
+def write_file (file_path: str, data: str, append: bool = False, 
+                append_new_line: bool = True) -> bool:
+    """
+    Writes data to file.
+    If appending, append_to_file will be called instead.
+    """
+
+    if append:
+        return append_to_file (file_path, data, append_new_line)
+
     if str_empty (file_path):
         return False
     
@@ -903,4 +1180,24 @@ def write_file (file_path: str, data: str) -> bool:
     file.write (data)
     file.close ()
     return True
-    
+
+
+def zip_contents (zip_path: str) -> Tuple[str, ...]:
+    """
+    Returns a list with all files found in a ZIP file.
+    """
+    if file_exists (zip_path) and zipfile.is_zipfile (zip_path):
+        contents = []
+
+        with ZipFile (zip_path, "r") as zip:
+            for entry in zip.filelist:
+                contents.append (entry.filename)
+
+        return contents
+
+
+# DEBUGGING zone
+
+#draw_frame (5, 3)
+#l = zip_contents ("/home/javier/Descargas/ddwrapper.zip")
+#print (l)
