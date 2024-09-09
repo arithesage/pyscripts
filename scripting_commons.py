@@ -46,9 +46,17 @@ from subprocess import run
 from typing import Dict
 from typing import Tuple
 
-from zipfile import ZipFile
+try:
+    from zipfile import ZipFile
+    ZIPFILE_AVAILABLE = True
+except ModuleNotFoundError:
+    ZIPFILE_AVAILABLE = False
 
-import wget
+try:
+    import wget
+    WGET_AVAILABLE = True
+except ModuleNotFoundError:
+    WGET_AVAILABLE = False
 
 
 
@@ -436,6 +444,9 @@ def download (url: str, destination: str = ".") -> bool:
     Downloads a file using the wget module.
     Destination, is given, is the destination dir, without filename.
     """
+
+    if not WGET_AVAILABLE:
+        return False
     
     if (destination == "."):
         destination = cwd ()
@@ -465,50 +476,52 @@ def draw (char_code: int, new_line: bool = False) -> str:
 
 
 def draw_framed_text (text: str, margin: int = 1) -> str:
-    text_lines = text.split ("\n")
+    pass
+
+    # text_lines = text.split ("\n")
     
-    text_w = 0
-    text_h = len (text_lines)
-    frame = 1
+    # text_w = 0
+    # text_h = len (text_lines)
+    # frame = 1
 
-    for line in text_lines:
-        line_w = len (line)
+    # for line in text_lines:
+    #     line_w = len (line)
 
-        if (line_w > text_w):
-            text_w = line_w
+    #     if (line_w > text_w):
+    #         text_w = line_w
 
-    columns = (text_w + frame)
-    lines = (text_h + frame)
+    # columns = (text_w + frame)
+    # lines = (text_h + frame)
 
-    last_column = (columns - 1)
-    last_line = (lines - 1)
+    # last_column = (columns - 1)
+    # last_line = (lines - 1)
 
-    for l in range (0, lines):
-        for c in range (0, columns):
-            if (l == 0):
-                if (c == 0):
-                    draw (CHARS.FRAME_TOP_LEFT)
-                elif (c == last_column):
-                    draw (CHARS.FRAME_TOP_RIGHT, True)
-                else:
-                    draw (CHARS.FRAME_H_LINE)
+    # for l in range (0, lines):
+    #     for c in range (0, columns):
+    #         if (l == 0):
+    #             if (c == 0):
+    #                 draw (CHARS.FRAME_TOP_LEFT)
+    #             elif (c == last_column):
+    #                 draw (CHARS.FRAME_TOP_RIGHT, True)
+    #             else:
+    #                 draw (CHARS.FRAME_H_LINE)
 
-            elif (l == last_line):
-                if (c == 0):
-                    draw (CHARS.FRAME_BOTTOM_LEFT)
-                elif (c == last_column):
-                    draw (CHARS.FRAME_BOTTOM_RIGHT, True)
-                else:
-                    draw (CHARS.FRAME_H_LINE)
+    #         elif (l == last_line):
+    #             if (c == 0):
+    #                 draw (CHARS.FRAME_BOTTOM_LEFT)
+    #             elif (c == last_column):
+    #                 draw (CHARS.FRAME_BOTTOM_RIGHT, True)
+    #             else:
+    #                 draw (CHARS.FRAME_H_LINE)
 
-            else:
-                if (c == 0):
-                    draw (CHARS.FRAME_V_LINE)
-                elif (c == last_column):
-                    draw (CHARS.FRAME_V_LINE, True)
-                else:
-                    print (text_lines[l - 1][c])
-    #                draw (CHARS.SPACE)
+    #         else:
+    #             if (c == 0):
+    #                 draw (CHARS.FRAME_V_LINE)
+    #             elif (c == last_column):
+    #                 draw (CHARS.FRAME_V_LINE, True)
+    #             else:
+    #                 print (text_lines[l - 1][c])
+    #                 draw (CHARS.SPACE)
 
 
 
@@ -718,12 +731,6 @@ def in_windows () -> bool:
     Returns True if we are in Windows (any version)
     """
     return (platform.system().lower() == "windows")
-    # windir = env ("WINDIR")
-
-    # if str_empty (windir):
-    #     return False
-
-    # return True
 
 
 def is_windows_exec (executable :str) -> bool:
@@ -1186,6 +1193,9 @@ def zip_contents (zip_path: str) -> Tuple[str, ...]:
     """
     Returns a list with all files found in a ZIP file.
     """
+    if not ZIPFILE_AVAILABLE:
+        return None
+
     if file_exists (zip_path) and zipfile.is_zipfile (zip_path):
         contents = []
 

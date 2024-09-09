@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 
-from scripting_commons import *
+import sys
+
+from scripting_commons import concat, cwd, dir_exists, download, exec, \
+                              file_ext, in_linux, in_windows, file_exists, \
+                              make_path, no_args, os_arch, os_name, \
+                              print_va, user_home
+
 
 
 
@@ -290,7 +296,7 @@ DEBUGGING = True
 
 if __name__ == "__main__":
     if DEBUGGING:
-        argv = ("DUMMY", "")
+        argv = (None, "")
     else:        
         argv = sys.argv
 
