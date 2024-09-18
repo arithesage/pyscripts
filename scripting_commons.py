@@ -18,6 +18,7 @@ import datetime
 import hashlib
 import io
 import json
+import os
 import platform
 import shutil
 import sys
@@ -35,7 +36,7 @@ from os.path import isdir as dir_exists
 from os.path import dirname as dir_name
 from os.path import isfile as file_exists
 from os.path import realpath as full_path
-from os.path import join as make_path
+#from os.path import join as make_path
 from os.path import basename, realpath
 
 from pathlib import Path
@@ -786,6 +787,54 @@ def makedir (path: str) -> bool:
     return True
 
 
+def make_path (*path_chunks) -> str:
+    """
+    Creates a path from a bunch of chunks.
+
+    os.path.join is the usual way to form a path, but, if the first
+    chunk is a path (contains a path separator), the function clears it.
+
+    This one allows to create a path by simply concatenating and cleaning
+    (if needed) the chunks. You can pass '/home', 'user', '.config' or
+    '/home/user', '.config', and the result will be the same: 
+    '/home/user/.config'.
+    """
+    path = ""
+    all_parts = []
+
+    # Examine all path chunks and add all parts to the all_parts list.
+    #
+    # If the first chunk starts with a separator, 
+    # and we are in a UNIX like OS, add it as is to the all_parts list
+    #
+    # If a chunk starts or ends with separators, and isn't the first one,
+    # remove them before adding it to the all_parts list
+    #
+    # And if a chunk contains no separator at all, add it to the all_parts
+    # list as is.
+    
+    for chunk in path_chunks:
+        # If all_parts is empty, this is the first chunk
+        if (len (all_parts) == 0) and chunk.startswith (os.sep):
+            all_parts.append (chunk)
+
+        elif chunk.startswith (os.sep) or chunk.endswith (os.sep):
+            chunk = chunk.strip (os.sep)
+            all_parts.append (chunk)
+
+        else:
+            all_parts.append (chunk)
+
+    # Create the final path with all collected parts
+    for part in all_parts:
+        path += part
+        path += os.sep
+
+    # Remove the last added separator
+    path = path.rstrip (os.sep)
+    return path
+
+
 def make_tempdir () -> str:
     """
     Creates a temporal dir and returns its path.
@@ -1086,7 +1135,7 @@ def temp_path () -> str:
         return make_path (user_home(), "_tmp")
     
 
-def test_ip (ip_address: str) -> bool:
+def test_ip (ip_address: str, quiet = False) -> bool:
     """
     Calls ping command line program to test if a IP address is reachable
     """
@@ -1098,12 +1147,20 @@ def test_ip (ip_address: str) -> bool:
     print ("Trying connecting to " + ip_address + " ...")
 
     if in_windows ():
-        exit_code = run ("ping -n 1 " + ip_address + " > NUL")
+        cmdline = concat ("ping -n 1", ip_address)
+        exit_code = shellexec (cmdline).return_code
     else:
-        exit_code = run ("ping -c 1 " + ip_address + " > /dev/null")
+        cmdline = concat ("ping -c 1 ", ip_address)
+        exit_code = shellexec (cmdline).return_code
 
     if (exit_code != 0):
+        if not quiet:
+            print ("Address is unreachable.")
+
         return False
+
+    if not quiet:
+        print ("Address is reachable.")
 
     return True
     
@@ -1211,3 +1268,5 @@ def zip_contents (zip_path: str) -> Tuple[str, ...]:
 #draw_frame (5, 3)
 #l = zip_contents ("/home/javier/Descargas/ddwrapper.zip")
 #print (l)
+#test_ip ("192.168.1.53")
+#test_ip ("caraverdosa.zapto.org")
