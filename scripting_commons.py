@@ -36,7 +36,6 @@ from os.path import isdir as dir_exists
 from os.path import dirname as dir_name
 from os.path import isfile as file_exists
 from os.path import realpath as full_path
-#from os.path import join as make_path
 from os.path import basename, realpath
 
 from pathlib import Path
@@ -54,7 +53,7 @@ except ModuleNotFoundError:
     ZIPFILE_AVAILABLE = False
 
 try:
-    import wget
+    import wget # type: ignore
     WGET_AVAILABLE = True
 except ModuleNotFoundError:
     WGET_AVAILABLE = False
@@ -474,60 +473,6 @@ def draw (char_code: int, new_line: bool = False) -> str:
         print (chr (char_code), end="")
     else:
         print (chr (char_code))
-
-
-def draw_framed_text (text: str, margin: int = 1) -> str:
-    pass
-
-    # text_lines = text.split ("\n")
-    
-    # text_w = 0
-    # text_h = len (text_lines)
-    # frame = 1
-
-    # for line in text_lines:
-    #     line_w = len (line)
-
-    #     if (line_w > text_w):
-    #         text_w = line_w
-
-    # columns = (text_w + frame)
-    # lines = (text_h + frame)
-
-    # last_column = (columns - 1)
-    # last_line = (lines - 1)
-
-    # for l in range (0, lines):
-    #     for c in range (0, columns):
-    #         if (l == 0):
-    #             if (c == 0):
-    #                 draw (CHARS.FRAME_TOP_LEFT)
-    #             elif (c == last_column):
-    #                 draw (CHARS.FRAME_TOP_RIGHT, True)
-    #             else:
-    #                 draw (CHARS.FRAME_H_LINE)
-
-    #         elif (l == last_line):
-    #             if (c == 0):
-    #                 draw (CHARS.FRAME_BOTTOM_LEFT)
-    #             elif (c == last_column):
-    #                 draw (CHARS.FRAME_BOTTOM_RIGHT, True)
-    #             else:
-    #                 draw (CHARS.FRAME_H_LINE)
-
-    #         else:
-    #             if (c == 0):
-    #                 draw (CHARS.FRAME_V_LINE)
-    #             elif (c == last_column):
-    #                 draw (CHARS.FRAME_V_LINE, True)
-    #             else:
-    #                 print (text_lines[l - 1][c])
-    #                 draw (CHARS.SPACE)
-
-
-
-def draw_message (text: str) -> None:
-    pass
 
 
 def env (var_name: str) -> str:
@@ -1268,5 +1213,3 @@ def zip_contents (zip_path: str) -> Tuple[str, ...]:
 #draw_frame (5, 3)
 #l = zip_contents ("/home/javier/Descargas/ddwrapper.zip")
 #print (l)
-#test_ip ("192.168.1.53")
-#test_ip ("caraverdosa.zapto.org")

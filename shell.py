@@ -11,13 +11,8 @@ from scripting_commons import makedir as mkdir
 from scripting_commons import full_path as realpath
 
 from scripting_commons import basename, chdir, copy, cwd, list_dir,\
-                              delete, dir_exists, file_exists, path_exists,\
-                              print_va, si_path
-
-
-
-
-PWD = None
+                              delete, dir_exists, path_exists, print_va,\
+                              si_path
 
 
 
@@ -55,7 +50,7 @@ def pwd () -> None:
 
 
 def rm (path: str, opts: str = "") -> bool:
-    opts = opts.split ()
+    opts = opts.split (" ")
     return delete (path, ("-r") in opts)
 
 
